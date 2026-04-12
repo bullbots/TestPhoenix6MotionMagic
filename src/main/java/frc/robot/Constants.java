@@ -88,5 +88,22 @@ public final class Constants {
     public static final boolean kSoftLimitsEnabled = true;
     public static final double kForwardSoftLimit = 540.0;   // +540 degrees (360 + 180)
     public static final double kReverseSoftLimit = -540.0;  // -540 degrees (360 + 180)
+
+    // ===================================================================================
+    // CURRENT LIMITS
+    // ===================================================================================
+    // Current limits protect the motor and mechanism from excessive current draw.
+    // Supply current limit restricts current drawn from the battery.
+    // ===================================================================================
+    public static final boolean kCurrentLimitEnabled = true;
+    public static final double kSupplyCurrentLimit = 30.0;  // Amps
+
+    // ===================================================================================
+    // NEUTRAL MODE
+    // ===================================================================================
+    // Brake mode holds position when no power is applied.
+    // Coast mode allows free spinning when no power is applied.
+    // ===================================================================================
+    public static final boolean kBrakeMode = true;
   }
 }
