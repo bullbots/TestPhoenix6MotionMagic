@@ -24,9 +24,11 @@ import frc.robot.Constants.MotorConstants;
 import java.util.function.DoubleSupplier;
 
 public class MotorSubsystem extends SubsystemBase {
+  private static final double kDegreesPerRotation = 360.0;
+
   private final TalonFX m_motor;
   private final MotionMagicVoltage m_mmRequest = new MotionMagicVoltage(0);
-  private double m_targetPosition = 0;
+  private double m_targetPositionDegrees = 0;
 
   public MotorSubsystem() {
     m_motor = new TalonFX(MotorConstants.kMotorCanId);
@@ -37,11 +39,11 @@ public class MotorSubsystem extends SubsystemBase {
     FeedbackConfigs fdb = cfg.Feedback;
     fdb.SensorToMechanismRatio = MotorConstants.kGearRatio;
 
-    // Configure Motion Magic (values are in rotations per second)
+    // Configure Motion Magic (convert from degrees to rotations)
     MotionMagicConfigs mm = cfg.MotionMagic;
-    mm.MotionMagicCruiseVelocity = MotorConstants.kCruiseVelocity;  // rotations per second
-    mm.MotionMagicAcceleration = MotorConstants.kAcceleration;      // rotations per second squared
-    mm.MotionMagicJerk = MotorConstants.kJerk;                      // rotations per second cubed
+    mm.MotionMagicCruiseVelocity = MotorConstants.kCruiseVelocity / kDegreesPerRotation;
+    mm.MotionMagicAcceleration = MotorConstants.kAcceleration / kDegreesPerRotation;
+    mm.MotionMagicJerk = MotorConstants.kJerk / kDegreesPerRotation;
 
     // Configure PID and feedforward gains
     Slot0Configs slot0 = cfg.Slot0;
@@ -52,12 +54,12 @@ public class MotorSubsystem extends SubsystemBase {
     slot0.kI = MotorConstants.kI;
     slot0.kD = MotorConstants.kD;
 
-    // Configure soft limits (values are in rotations)
+    // Configure soft limits (convert from degrees to rotations)
     SoftwareLimitSwitchConfigs softLimits = cfg.SoftwareLimitSwitch;
     softLimits.ForwardSoftLimitEnable = MotorConstants.kSoftLimitsEnabled;
     softLimits.ReverseSoftLimitEnable = MotorConstants.kSoftLimitsEnabled;
-    softLimits.ForwardSoftLimitThreshold = MotorConstants.kForwardSoftLimit;
-    softLimits.ReverseSoftLimitThreshold = MotorConstants.kReverseSoftLimit;
+    softLimits.ForwardSoftLimitThreshold = MotorConstants.kForwardSoftLimit / kDegreesPerRotation;
+    softLimits.ReverseSoftLimitThreshold = MotorConstants.kReverseSoftLimit / kDegreesPerRotation;
 
     // Configure neutral mode (brake or coast)
     MotorOutputConfigs motorOutput = cfg.MotorOutput;
@@ -76,6 +78,7 @@ public class MotorSubsystem extends SubsystemBase {
     }
     if (!status.isOK()) {
       System.out.println("Could not configure motor. Error: " + status.toString());
+
     }
 
     // Reset position to 0 on startup
@@ -84,33 +87,35 @@ public class MotorSubsystem extends SubsystemBase {
 
   /**
    * Sets the target position using Motion Magic.
-   * @param positionRotations Target position in rotations
+   * @param positionDegrees Target position in degrees
    */
-  public void setPosition(double positionRotations) {
-    m_targetPosition = positionRotations;
+  public void setPosition(double positionDegrees) {
+    m_targetPositionDegrees = positionDegrees;
+    double positionRotations = positionDegrees / kDegreesPerRotation;
     m_motor.setControl(m_mmRequest.withPosition(positionRotations).withSlot(0));
   }
 
   /**
    * Resets the motor's position sensor to a specified value.
-   * @param positionRotations Position in rotations to set as current position
+   * @param positionDegrees Position in degrees to set as current position
    */
-  public void resetPosition(double positionRotations) {
+  public void resetPosition(double positionDegrees) {
+    double positionRotations = positionDegrees / kDegreesPerRotation;
     m_motor.setPosition(positionRotations);
   }
 
   /**
-   * @return Current position in rotations
+   * @return Current position in degrees
    */
   public double getPosition() {
-    return m_motor.getPosition().getValueAsDouble();
+    return m_motor.getPosition().getValueAsDouble() * kDegreesPerRotation;
   }
 
   /**
-   * @return Current velocity in rotations per second
+   * @return Current velocity in degrees per second
    */
   public double getVelocity() {
-    return m_motor.getVelocity().getValueAsDouble();
+    return m_motor.getVelocity().getValueAsDouble() * kDegreesPerRotation;
   }
 
   public TalonFX getMotor() {
@@ -127,8 +132,21 @@ public class MotorSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    SmartDashboard.putNumber("[Out] Motor Target (rot)", m_targetPosition);
-    SmartDashboard.putNumber("[Out] Motor Position (rot)", getPosition());
-    SmartDashboard.putNumber("[Out] Motor Velocity (rot/s)", getVelocity());
+    SmartDashboard.putNumber("[Out] Motor Target (deg)", m_targetPositionDegrees);
+    SmartDashboard.putNumber("[Out] Motor Position (deg)", getPosition());
+    SmartDashboard.putNumber("[Out] Motor Velocity (deg/s)", getVelocity());
+
+    // Check soft limit faults
+    boolean forwardLimitHit = m_motor.getFault_ForwardSoftLimit().getValue();
+    boolean reverseLimitHit = m_motor.getFault_ReverseSoftLimit().getValue();
+    SmartDashboard.putBoolean("[Out] Forward Limit Hit", forwardLimitHit);
+    SmartDashboard.putBoolean("[Out] Reverse Limit Hit", reverseLimitHit);
+
+    if (forwardLimitHit) {
+      System.out.println("WARNING: Forward soft limit reached at " + getPosition() + " degrees");
+    }
+    if (reverseLimitHit) {
+      System.out.println("WARNING: Reverse soft limit reached at " + getPosition() + " degrees");
+    }
   }
 }

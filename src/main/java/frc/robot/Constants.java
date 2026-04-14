@@ -21,6 +21,14 @@ public final class Constants {
     public static final int kMotorCanId = 0;
 
     // ===================================================================================
+    // UNIT CONVENTION
+    // ===================================================================================
+    // All position values are in DEGREES and velocity values are in DEGREES/SECOND.
+    // The subsystem converts to rotations when configuring the motor.
+    // To convert: 1 rotation = 360 degrees
+    // ===================================================================================
+
+    // ===================================================================================
     // GEAR RATIO CONFIGURATION
     // ===================================================================================
     // SensorToMechanismRatio = rotor rotations per mechanism rotation
@@ -42,29 +50,29 @@ public final class Constants {
     public static final double kGearRatio = 1.0;  // 1:1 direct drive
 
     // ===================================================================================
-    // MOTION MAGIC PARAMETERS
+    // MOTION MAGIC PARAMETERS (in degrees)
     // ===================================================================================
     // Motion Magic generates a smooth motion profile (trapezoidal or S-curve) to move
-    // the motor from current position to target position. All values are in mechanism
-    // rotations (after gear ratio is applied).
+    // the motor from current position to target position.
     //
-    // kCruiseVelocity: Maximum velocity during the move (rotations per second)
-    // kAcceleration:   How fast to speed up/slow down (rotations per second squared)
-    // kJerk:           How fast acceleration changes (rotations per second cubed)
+    // kCruiseVelocity: Maximum velocity during the move (degrees per second)
+    // kAcceleration:   How fast to speed up/slow down (degrees per second squared)
+    // kJerk:           How fast acceleration changes (degrees per second cubed)
     //                  Higher jerk = snappier response, lower jerk = smoother motion
     //
-    // Phoenix 6 example values (for 12.8:1 gearbox):
-    //   CruiseVelocity = 5 rot/s, Acceleration = 10 rot/s², Jerk = 100 rot/s³
+    // Phoenix 6 example values (for 12.8:1 gearbox, converted to degrees):
+    //   CruiseVelocity = 1800 deg/s, Acceleration = 3600 deg/s², Jerk = 36000 deg/s³
     // ===================================================================================
-    public static final double kCruiseVelocity = 0.5;   // rotations per second
-    public static final double kAcceleration = 1.0;     // rotations per second squared
-    public static final double kJerk = 10.0;            // rotations per second cubed
+    public static final double kCruiseVelocity = 180.0;   // degrees per second
+    public static final double kAcceleration = 360.0;     // degrees per second squared
+    public static final double kJerk = 3600.0;            // degrees per second cubed
 
     // ===================================================================================
-    // PID AND FEEDFORWARD GAINS
+    // PID AND FEEDFORWARD GAINS (in rotations - Phoenix 6 native units)
     // ===================================================================================
     // These gains control how the motor responds to position/velocity errors.
-    // All gains operate in mechanism rotations (after gear ratio is applied).
+    // NOTE: PID gains remain in ROTATIONS because Phoenix 6 operates internally in
+    // rotations. The subsystem converts position commands to rotations before sending.
     //
     // Feedforward gains (predict required voltage):
     //   kS: Static friction compensation (volts). Voltage needed to overcome friction
@@ -90,22 +98,21 @@ public final class Constants {
     public static final double kV = 0.12;    // Velocity feedforward (V per rotation/s)
     public static final double kA = 0.01;    // Acceleration feedforward (V per rotation/s²)
     public static final double kP = 4.7;     // Position proportional gain (60 / 12.8)
-    public static final double kI = 0;       // Integral gain
+    public static final double kI = 0.1 / 360.0;  // Integral gain (scaled for degrees)
     public static final double kD = 0.039;   // Derivative gain (0.5 / 12.8)
 
     // ===================================================================================
-    // SOFT LIMITS
+    // SOFT LIMITS (in degrees)
     // ===================================================================================
     // Soft limits prevent the motor from moving beyond specified positions.
     // The motor will refuse to move past these limits even if commanded to.
-    // Values are in mechanism rotations (after gear ratio is applied).
     //
     // Use soft limits to protect mechanisms from over-travel when there are no
     // physical hard stops, or as a safety backup to hard stops.
     // ===================================================================================
-    public static final boolean kSoftLimitsEnabled = false;
-    public static final double kForwardSoftLimit = 1.5;   // +1.5 rotations
-    public static final double kReverseSoftLimit = -1.5;  // -1.5 rotations
+    public static final boolean kSoftLimitsEnabled = true;
+    public static final double kForwardSoftLimit = 540.0;   // +540 degrees
+    public static final double kReverseSoftLimit = -540.0;  // -540 degrees
 
     // ===================================================================================
     // CURRENT LIMITS

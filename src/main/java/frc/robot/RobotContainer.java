@@ -20,7 +20,7 @@ public class RobotContainer {
 
   public RobotContainer() {
     // Initialize SmartDashboard setpoint with default value
-    SmartDashboard.putNumber("[In] Motor Setpoint (rot)", 0);
+    SmartDashboard.putNumber("[In] Motor Setpoint (deg)", 0);
 
     configureBindings();
   }
@@ -29,7 +29,7 @@ public class RobotContainer {
     // Motion Magic position control using SmartDashboard setpoint
     m_motorSubsystem.setDefaultCommand(
         m_motorSubsystem.setPositionCommand(
-            () -> SmartDashboard.getNumber("[In] Motor Setpoint (rot)", 0)
+            () -> SmartDashboard.getNumber("[In] Motor Setpoint (deg)", 0)
         )
     );
   }
