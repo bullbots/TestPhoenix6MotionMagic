@@ -18,82 +18,105 @@ public final class Constants {
   }
 
   public static class MotorConstants {
-    public static final int kMotorCanId = 1;
+    public static final int kMotorCanId = 0;
 
     // ===================================================================================
     // GEAR RATIO CONFIGURATION
     // ===================================================================================
-    // SensorToMechanismRatio = (rotor rotations per mechanism rotation) * (unit conversion)
+    // SensorToMechanismRatio = rotor rotations per mechanism rotation
     //
-    // Example: For a 17.77:1 gearbox measuring in degrees:
-    //   kGearRatio = 17.77 * 360.0 = 6397.2
+    // This value tells the motor controller how many rotor rotations equal one
+    // mechanism rotation. The motor will report position/velocity in mechanism
+    // rotations, not rotor rotations.
     //
-    // For testing with 1:1 ratio in degrees:
-    //   kGearRatio = 1.0 * 360.0 = 360.0
+    // Examples:
+    //   - 1:1 direct drive: kGearRatio = 1.0
+    //   - 12.8:1 gearbox:   kGearRatio = 12.8
+    //   - 50:1 gearbox:     kGearRatio = 50.0
     //
-    // After setting kGearRatio, you must also scale the gains (see PID section below).
+    // IMPORTANT: When changing the gear ratio, you must also scale kP and kD:
+    //   kP_new = kP_base * (old_ratio / new_ratio)
+    //   kD_new = kD_base * (old_ratio / new_ratio)
+    // The feedforward gains (kS, kV, kA) do NOT need to be scaled.
     // ===================================================================================
-    private static final double kMechanicalGearRatio = 1.0;  // Rotor rotations per mechanism rotation
-    private static final double kUnitsPerRotation = 360.0;   // 360 for degrees, 1 for rotations
-    public static final double kGearRatio = kMechanicalGearRatio * kUnitsPerRotation;
+    public static final double kGearRatio = 1.0;  // 1:1 direct drive
 
     // ===================================================================================
     // MOTION MAGIC PARAMETERS
     // ===================================================================================
-    // These values are in mechanism units (degrees if kUnitsPerRotation = 360).
-    // Base values (for 1 rotation = 1 unit): 5 units/s, 10 units/s², 100 units/s³
-    // Scaled by kUnitsPerRotation for degrees.
+    // Motion Magic generates a smooth motion profile (trapezoidal or S-curve) to move
+    // the motor from current position to target position. All values are in mechanism
+    // rotations (after gear ratio is applied).
+    //
+    // kCruiseVelocity: Maximum velocity during the move (rotations per second)
+    // kAcceleration:   How fast to speed up/slow down (rotations per second squared)
+    // kJerk:           How fast acceleration changes (rotations per second cubed)
+    //                  Higher jerk = snappier response, lower jerk = smoother motion
+    //
+    // Phoenix 6 example values (for 12.8:1 gearbox):
+    //   CruiseVelocity = 5 rot/s, Acceleration = 10 rot/s², Jerk = 100 rot/s³
     // ===================================================================================
-    public static final double kCruiseVelocity = 5 * kUnitsPerRotation;   // degrees per second
-    public static final double kAcceleration = 10 * kUnitsPerRotation;    // degrees per second squared
-    public static final double kJerk = 100 * kUnitsPerRotation;           // degrees per second cubed
+    public static final double kCruiseVelocity = 0.5;   // rotations per second
+    public static final double kAcceleration = 1.0;     // rotations per second squared
+    public static final double kJerk = 10.0;            // rotations per second cubed
 
     // ===================================================================================
     // PID AND FEEDFORWARD GAINS
     // ===================================================================================
-    // Gains are applied in mechanism units. When you change units (e.g., rotations to
-    // degrees), position/velocity errors become numerically larger for the same physical
-    // error, so gains must be scaled down proportionally.
+    // These gains control how the motor responds to position/velocity errors.
+    // All gains operate in mechanism rotations (after gear ratio is applied).
     //
-    // Base values (tuned for rotations, i.e., kUnitsPerRotation = 1):
-    //   kS = 0.25 V (static friction - not scaled, it's a voltage offset)
-    //   kV = 0.12 V per rotation/s
-    //   kA = 0.01 V per rotation/s²
-    //   kP = 60 V per rotation of error
-    //   kI = 0
-    //   kD = 0.5 V per rotation/s of error velocity
+    // Feedforward gains (predict required voltage):
+    //   kS: Static friction compensation (volts). Voltage needed to overcome friction
+    //       at rest. Does NOT scale with gear ratio.
+    //   kV: Velocity feedforward (volts per rotation/s). Voltage needed to maintain
+    //       a given velocity. Does NOT scale with gear ratio.
+    //   kA: Acceleration feedforward (volts per rotation/s²). Voltage needed to
+    //       accelerate. Does NOT scale with gear ratio.
     //
-    // To convert for different units, divide velocity/position gains by kUnitsPerRotation:
-    //   kV_new = kV_base / kUnitsPerRotation
-    //   kP_new = kP_base / kUnitsPerRotation
-    //   etc.
+    // Feedback gains (correct for errors):
+    //   kP: Proportional gain (volts per rotation of error). Higher = stiffer response.
+    //       MUST be scaled when gear ratio changes: kP_new = kP_base / gear_ratio
+    //   kI: Integral gain (volts per rotation-second of accumulated error).
+    //       Usually leave at 0 for Motion Magic.
+    //   kD: Derivative gain (volts per rotation/s of error velocity). Adds damping.
+    //       MUST be scaled when gear ratio changes: kD_new = kD_base / gear_ratio
     //
-    // Example: kP = 60 for rotations. For degrees: kP = 60 / 360 = 0.167
-    //   A 72° error (0.2 rotations) gives: 72 * 0.167 = 12V (same as 0.2 * 60 = 12V)
+    // These values are scaled from Phoenix 6 example (12.8:1 gearbox) to 1:1 direct drive.
+    // Base values: kS=0.25, kV=0.12, kA=0.01, kP=60, kI=0, kD=0.5
+    // Scaled kP and kD by dividing by 12.8.
     // ===================================================================================
-    public static final double kS = 0.25;                      // Static friction (volts) - not scaled
-    public static final double kV = 0.12 / kUnitsPerRotation;  // Velocity feedforward
-    public static final double kA = 0.01 / kUnitsPerRotation;  // Acceleration feedforward
-    public static final double kP = 60.0 / kUnitsPerRotation;  // Position proportional gain
-    public static final double kI = 0;                         // Integral gain
-    public static final double kD = 0.5 / kUnitsPerRotation;   // Derivative gain
+    public static final double kS = 0.25;    // Static friction (volts)
+    public static final double kV = 0.12;    // Velocity feedforward (V per rotation/s)
+    public static final double kA = 0.01;    // Acceleration feedforward (V per rotation/s²)
+    public static final double kP = 4.7;     // Position proportional gain (60 / 12.8)
+    public static final double kI = 0;       // Integral gain
+    public static final double kD = 0.039;   // Derivative gain (0.5 / 12.8)
 
     // ===================================================================================
     // SOFT LIMITS
     // ===================================================================================
     // Soft limits prevent the motor from moving beyond specified positions.
-    // Values are in mechanism units (degrees if kUnitsPerRotation = 360).
-    // The motor will not accept setpoints or move beyond these limits.
+    // The motor will refuse to move past these limits even if commanded to.
+    // Values are in mechanism rotations (after gear ratio is applied).
+    //
+    // Use soft limits to protect mechanisms from over-travel when there are no
+    // physical hard stops, or as a safety backup to hard stops.
     // ===================================================================================
-    public static final boolean kSoftLimitsEnabled = true;
-    public static final double kForwardSoftLimit = 540.0;   // +540 degrees (360 + 180)
-    public static final double kReverseSoftLimit = -540.0;  // -540 degrees (360 + 180)
+    public static final boolean kSoftLimitsEnabled = false;
+    public static final double kForwardSoftLimit = 1.5;   // +1.5 rotations
+    public static final double kReverseSoftLimit = -1.5;  // -1.5 rotations
 
     // ===================================================================================
     // CURRENT LIMITS
     // ===================================================================================
-    // Current limits protect the motor and mechanism from excessive current draw.
+    // Current limits protect the motor, mechanism, and battery from excessive current.
     // Supply current limit restricts current drawn from the battery.
+    //
+    // Typical values:
+    //   - Light load / positioning: 20-30 A
+    //   - Medium load: 40-60 A
+    //   - Heavy load (drivetrain): 60-80 A
     // ===================================================================================
     public static final boolean kCurrentLimitEnabled = true;
     public static final double kSupplyCurrentLimit = 30.0;  // Amps
@@ -101,8 +124,12 @@ public final class Constants {
     // ===================================================================================
     // NEUTRAL MODE
     // ===================================================================================
-    // Brake mode holds position when no power is applied.
-    // Coast mode allows free spinning when no power is applied.
+    // Controls motor behavior when no power is applied (output = 0).
+    //
+    // Brake mode: Motor resists rotation, holds position. Good for arms, elevators,
+    //             and mechanisms that need to hold position.
+    // Coast mode: Motor spins freely. Good for flywheels or when you want the
+    //             mechanism to coast to a stop naturally.
     // ===================================================================================
     public static final boolean kBrakeMode = true;
   }

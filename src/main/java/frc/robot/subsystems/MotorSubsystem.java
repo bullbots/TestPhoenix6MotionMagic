@@ -16,6 +16,7 @@ import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.MotorConstants;
@@ -25,6 +26,7 @@ import java.util.function.DoubleSupplier;
 public class MotorSubsystem extends SubsystemBase {
   private final TalonFX m_motor;
   private final MotionMagicVoltage m_mmRequest = new MotionMagicVoltage(0);
+  private double m_targetPosition = 0;
 
   public MotorSubsystem() {
     m_motor = new TalonFX(MotorConstants.kMotorCanId);
@@ -35,11 +37,11 @@ public class MotorSubsystem extends SubsystemBase {
     FeedbackConfigs fdb = cfg.Feedback;
     fdb.SensorToMechanismRatio = MotorConstants.kGearRatio;
 
-    // Configure Motion Magic (values are in degrees since SensorToMechanismRatio includes *360)
+    // Configure Motion Magic (values are in rotations per second)
     MotionMagicConfigs mm = cfg.MotionMagic;
-    mm.MotionMagicCruiseVelocity = MotorConstants.kCruiseVelocity;  // degrees per second
-    mm.MotionMagicAcceleration = MotorConstants.kAcceleration;      // degrees per second squared
-    mm.MotionMagicJerk = MotorConstants.kJerk;                      // degrees per second cubed
+    mm.MotionMagicCruiseVelocity = MotorConstants.kCruiseVelocity;  // rotations per second
+    mm.MotionMagicAcceleration = MotorConstants.kAcceleration;      // rotations per second squared
+    mm.MotionMagicJerk = MotorConstants.kJerk;                      // rotations per second cubed
 
     // Configure PID and feedforward gains
     Slot0Configs slot0 = cfg.Slot0;
@@ -50,7 +52,7 @@ public class MotorSubsystem extends SubsystemBase {
     slot0.kI = MotorConstants.kI;
     slot0.kD = MotorConstants.kD;
 
-    // Configure soft limits (values are in mechanism units - degrees)
+    // Configure soft limits (values are in rotations)
     SoftwareLimitSwitchConfigs softLimits = cfg.SoftwareLimitSwitch;
     softLimits.ForwardSoftLimitEnable = MotorConstants.kSoftLimitsEnabled;
     softLimits.ReverseSoftLimitEnable = MotorConstants.kSoftLimitsEnabled;
@@ -75,40 +77,39 @@ public class MotorSubsystem extends SubsystemBase {
     if (!status.isOK()) {
       System.out.println("Could not configure motor. Error: " + status.toString());
     }
+
+    // Reset position to 0 on startup
+    m_motor.setPosition(0);
   }
 
   /**
    * Sets the target position using Motion Magic.
-   * @param positionDegrees Target position in degrees
+   * @param positionRotations Target position in rotations
    */
-  public void setPositionDegrees(double positionDegrees) {
-    // Motor is configured with SensorToMechanismRatio including *360,
-    // so mechanism units are already in degrees - no conversion needed
-    m_motor.setControl(m_mmRequest.withPosition(positionDegrees).withSlot(0));
+  public void setPosition(double positionRotations) {
+    m_targetPosition = positionRotations;
+    m_motor.setControl(m_mmRequest.withPosition(positionRotations).withSlot(0));
   }
 
   /**
    * Resets the motor's position sensor to a specified value.
-   * @param positionDegrees Position in degrees to set as current position
+   * @param positionRotations Position in rotations to set as current position
    */
-  public void resetPositionDegrees(double positionDegrees) {
-    // Motor is configured for degrees, so pass degrees directly
-    m_motor.setPosition(positionDegrees);
+  public void resetPosition(double positionRotations) {
+    m_motor.setPosition(positionRotations);
   }
 
   /**
-   * @return Current position in degrees
+   * @return Current position in rotations
    */
-  public double getPositionDegrees() {
-    // Motor returns position in mechanism units (degrees due to SensorToMechanismRatio)
+  public double getPosition() {
     return m_motor.getPosition().getValueAsDouble();
   }
 
   /**
-   * @return Current velocity in degrees per second
+   * @return Current velocity in rotations per second
    */
-  public double getVelocityDegreesPerSecond() {
-    // Motor returns velocity in mechanism units per second (degrees/s)
+  public double getVelocity() {
     return m_motor.getVelocity().getValueAsDouble();
   }
 
@@ -116,16 +117,18 @@ public class MotorSubsystem extends SubsystemBase {
     return m_motor;
   }
 
-  public Command setPositionDegreesCommand(DoubleSupplier positionSupplier) {
-    return run(() -> setPositionDegrees(positionSupplier.getAsDouble()));
+  public Command setPositionCommand(DoubleSupplier positionSupplier) {
+    return run(() -> setPosition(positionSupplier.getAsDouble()));
   }
 
-  public Command resetPositionDegreesCommand(double positionDegrees) {
-    return runOnce(() -> resetPositionDegrees(positionDegrees));
+  public Command resetPositionCommand(double positionRotations) {
+    return runOnce(() -> resetPosition(positionRotations));
   }
 
   @Override
   public void periodic() {
-    // Telemetry can be added here if needed
+    SmartDashboard.putNumber("[Out] Motor Target (rot)", m_targetPosition);
+    SmartDashboard.putNumber("[Out] Motor Position (rot)", getPosition());
+    SmartDashboard.putNumber("[Out] Motor Velocity (rot/s)", getVelocity());
   }
 }
