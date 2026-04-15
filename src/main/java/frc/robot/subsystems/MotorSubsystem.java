@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
@@ -31,7 +32,7 @@ public class MotorSubsystem extends SubsystemBase {
   private double m_targetPositionDegrees = 0;
 
   public MotorSubsystem() {
-    m_motor = new TalonFX(MotorConstants.kMotorCanId);
+    m_motor = new TalonFX(MotorConstants.kMotorCanId, new CANBus("Indiana"));
 
     TalonFXConfiguration cfg = new TalonFXConfiguration();
 

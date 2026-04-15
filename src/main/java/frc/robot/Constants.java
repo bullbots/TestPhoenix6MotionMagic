@@ -18,7 +18,7 @@ public final class Constants {
   }
 
   public static class MotorConstants {
-    public static final int kMotorCanId = 0;
+    public static final int kMotorCanId = 15;
 
     // ===================================================================================
     // UNIT CONVENTION
@@ -47,7 +47,7 @@ public final class Constants {
     //   kD_new = kD_base * (old_ratio / new_ratio)
     // The feedforward gains (kS, kV, kA) do NOT need to be scaled.
     // ===================================================================================
-    public static final double kGearRatio = 1.0;  // 1:1 direct drive
+    public static final double kGearRatio = 17.77;  // 17.77:1 gearbox
 
     // ===================================================================================
     // MOTION MAGIC PARAMETERS (in degrees)
@@ -90,16 +90,16 @@ public final class Constants {
     //   kD: Derivative gain (volts per rotation/s of error velocity). Adds damping.
     //       MUST be scaled when gear ratio changes: kD_new = kD_base / gear_ratio
     //
-    // These values are scaled from Phoenix 6 example (12.8:1 gearbox) to 1:1 direct drive.
+    // These values are scaled from Phoenix 6 example base values to 17.77:1 gearbox.
     // Base values: kS=0.25, kV=0.12, kA=0.01, kP=60, kI=0, kD=0.5
-    // Scaled kP and kD by dividing by 12.8.
+    // Scaled kP and kD by dividing by 17.77.
     // ===================================================================================
-    public static final double kS = 0.25;    // Static friction (volts)
+    public static final double kS = 0.5;     // Static friction (volts) - increased for gearbox friction
     public static final double kV = 0.12;    // Velocity feedforward (V per rotation/s)
     public static final double kA = 0.01;    // Acceleration feedforward (V per rotation/s²)
-    public static final double kP = 4.7;     // Position proportional gain (60 / 12.8)
-    public static final double kI = 0.1 / 360.0;  // Integral gain (scaled for degrees)
-    public static final double kD = 0.039;   // Derivative gain (0.5 / 12.8)
+    public static final double kP = 12.0;    // Position proportional gain (tuned for 17.77:1)
+    public static final double kI = 1.0 / 360.0;  // Integral gain (scaled for degrees)
+    public static final double kD = 0.0281;  // Derivative gain (0.5 / 17.77)
 
     // ===================================================================================
     // SOFT LIMITS (in degrees)
@@ -111,8 +111,8 @@ public final class Constants {
     // physical hard stops, or as a safety backup to hard stops.
     // ===================================================================================
     public static final boolean kSoftLimitsEnabled = true;
-    public static final double kForwardSoftLimit = 540.0;   // +540 degrees
-    public static final double kReverseSoftLimit = -540.0;  // -540 degrees
+    public static final double kForwardSoftLimit = 100.0;   // +540 degrees
+    public static final double kReverseSoftLimit = -100.0;  // -540 degrees
 
     // ===================================================================================
     // CURRENT LIMITS
@@ -126,7 +126,7 @@ public final class Constants {
     //   - Heavy load (drivetrain): 60-80 A
     // ===================================================================================
     public static final boolean kCurrentLimitEnabled = true;
-    public static final double kSupplyCurrentLimit = 30.0;  // Amps
+    public static final double kSupplyCurrentLimit = 50.0;  // Amps
 
     // ===================================================================================
     // NEUTRAL MODE
